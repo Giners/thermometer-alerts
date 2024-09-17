@@ -2,11 +2,6 @@ package org.thermometer;
 
 import java.util.ArrayList;
 
-enum TemperatureScales {
-    FAHRENHEIT_SCALE,
-    CELSIUS_SCALE
-}
-
 public class Thermometer implements TemperatureDataEventListener {
 
     private TemperatureScales temperatureScale = TemperatureScales.CELSIUS_SCALE;
@@ -41,7 +36,7 @@ public class Thermometer implements TemperatureDataEventListener {
         if (this.previousTemp != null && !this.temperatureThresholds.isEmpty()) {
             new Thread(() -> {
                 for (TemperatureThresholdEventListener temperatureThreshold : temperatureThresholds) {
-                    temperatureThreshold.onTemperatureRead(this.currentTemp, this.previousTemp);
+                    temperatureThreshold.onTemperatureRead(this.currentTemp, this.previousTemp, this.temperatureScale);
                 }
             }).start();
         }
@@ -49,7 +44,8 @@ public class Thermometer implements TemperatureDataEventListener {
 
     public static void main(String[] args) {
         System.out.println("Is it hot or cold in here?");
-        TemperatureThreshold temperatureThreshold = new TemperatureThreshold(5.0F);
+
+        TemperatureThreshold temperatureThreshold = new TemperatureThreshold.TemperatureThresholdBuilder(5.0F).build();
         Thermometer thermometer = new Thermometer();
 
         thermometer.addTemperatureThreshold(temperatureThreshold);
