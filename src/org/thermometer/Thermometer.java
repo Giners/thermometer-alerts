@@ -8,12 +8,10 @@ public class Thermometer implements TemperatureDataEventListener {
 
     private TemperatureScales temperatureScale = TemperatureScales.CELSIUS_SCALE;
 
-    // private Float currentTemp = null;
-    // private Float previousTemp = null;
     private final AtomicReference<Float> currentTempAtomic = new AtomicReference<>(null);
     private final AtomicReference<Float> previousTempAtomic = new AtomicReference<>(null);
 
-    private ArrayList<TemperatureThresholdEventListener> temperatureThresholds = new ArrayList<TemperatureThresholdEventListener>();
+    private final ArrayList<TemperatureThresholdEventListener> temperatureThresholds = new ArrayList<>();
 
     /**
      * Default constructor that creates a thermometer and sets the temperature
@@ -29,8 +27,10 @@ public class Thermometer implements TemperatureDataEventListener {
 
     @Override
     public void onTemperatureData(float currentTemp) {
-        Float previousTemp = this.previousTempAtomic.getAndSet(
-                this.currentTempAtomic.getAndSet(currentTemp));
+        Float previousTemp = currentTempAtomic.getAndSet(currentTemp);
+        previousTempAtomic.getAndSet(previousTemp);
+
+        System.out.println(String.format("onTemperatureData - currentTemp: %f    -    previousTemp: %f", currentTemp, previousTemp));
 
         // Float previousTemp = this.previousTemp.getAndSet(temperature)
         // previousTemp = currentTemp;
@@ -43,11 +43,15 @@ public class Thermometer implements TemperatureDataEventListener {
         if (previousTemp != null
                 && Float.compare(previousTemp, currentTemp) != 0
                 && !temperatureThresholds.isEmpty()) {
+
+            System.out.println(String.format(
+                    "onTemperatureData conditional is true - previousTemp: %f   currentTemp: %f", previousTemp, currentTemp));
+
             new Thread(() -> {
                 for (TemperatureThresholdEventListener temperatureThreshold : temperatureThresholds) {
                     temperatureThreshold.onTemperatureRead(currentTemp, previousTemp, temperatureScale);
                 }
-            }).start();;
+            }).start();
         }
     }
 
@@ -66,6 +70,7 @@ public class Thermometer implements TemperatureDataEventListener {
         thermometer.onTemperatureData(4.4F);
         thermometer.onTemperatureData(6.7F);
         thermometer.onTemperatureData(8.1F);
+        thermometer.onTemperatureData(2.9F);
     }
 
 }
