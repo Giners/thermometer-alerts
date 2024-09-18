@@ -6,6 +6,6 @@ Java implementation of a thermometer that can read from an external source and a
 
 ```
 cd src
-javac javac org/thermometer/Thermometer.java
-java java org.thermometer.Thermometer
+javac org/thermometer/ProjectTests.java
+java -ea org.thermometer.ProjectTests
 ```

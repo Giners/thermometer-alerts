@@ -2,7 +2,6 @@ package org.thermometer;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 public class Thermometer implements TemperatureDataEventListener {
 
@@ -18,11 +17,9 @@ public class Thermometer implements TemperatureDataEventListener {
      * scale as Celsius.
      */
     public Thermometer() {
+        // TODO: Need to add getters/setters
+        // TODO: Need to do temperature conversion
         this.temperatureScale = TemperatureScales.CELSIUS_SCALE;
-    }
-
-    public void addTemperatureThreshold(TemperatureThresholdEventListener temperatureThreshold) {
-        temperatureThresholds.add(temperatureThreshold);
     }
 
     @Override
@@ -55,22 +52,32 @@ public class Thermometer implements TemperatureDataEventListener {
         }
     }
 
-    public static void main(String[] args) {
-        System.out.println("Is it hot or cold in here?");
+    public void addTemperatureThreshold(TemperatureThresholdEventListener temperatureThreshold) {
+        temperatureThresholds.add(temperatureThreshold);
+    }
 
-        Consumer<Float> thresholdEventCallback = newTemperature -> {
-            System.out.println(String.format("TemperatureThresholdEvent - newTemperature read: %f", newTemperature));
-        };
+    public void clearTemperatureThresholds() {
+        temperatureThresholds.clear();
+    }
 
-        TemperatureThreshold temperatureThreshold = new TemperatureThreshold.TemperatureThresholdBuilder(5.0F, thresholdEventCallback).build();
-        Thermometer thermometer = new Thermometer();
+    public Float getCurrentTemperature() {
+        return currentTempAtomic.getAcquire();
+    }
 
-        thermometer.addTemperatureThreshold(temperatureThreshold);
+    public Float getPreviousTemperature() {
+        return previousTempAtomic.getAcquire();
+    }
 
-        thermometer.onTemperatureData(4.4F);
-        thermometer.onTemperatureData(6.7F);
-        thermometer.onTemperatureData(8.1F);
-        thermometer.onTemperatureData(2.9F);
+    public TemperatureScales getTemperatureScale() {
+        return temperatureScale;
+    }
+
+    public void setTemperatureScale(TemperatureScales temperatureScale) throws IllegalArgumentException {
+        if (temperatureScale == null) {
+            throw new IllegalArgumentException("Temperature scale can't be set to 'null'");
+        }
+
+        this.temperatureScale = temperatureScale;
     }
 
 }
