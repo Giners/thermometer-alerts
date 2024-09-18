@@ -1,35 +1,49 @@
 package org.thermometer;
 
+import java.util.function.Consumer;
+
 public class TemperatureThreshold implements TemperatureThresholdEventListener {
+
+    private final float temperatureThreshold;
+    private final Consumer<Float> thresholdEventCallback;
+    private TemperatureScales temperatureScale;
+    private float thresholdTriggerPrecision;
+    private ThresholdTriggerDirections thresholdTriggerDirection;
 
     private TemperatureThreshold(
             float temperatureThreshold,
             TemperatureScales temperatureScale,
-            float thresholdPrecision,
-            ThresholdTriggerDirections triggerDirection) {
+            float thresholdTriggerPrecision,
+            ThresholdTriggerDirections thresholdTriggerDirection,
+            Consumer<Float> thresholdEventCallback
+    ) {
         this.temperatureThreshold = temperatureThreshold;
         this.temperatureScale = temperatureScale;
-        this.thresholdPrecision = thresholdPrecision;
-        this.triggerDirection = triggerDirection;
+        this.thresholdTriggerPrecision = thresholdTriggerPrecision;
+        this.thresholdTriggerDirection = thresholdTriggerDirection;
+        this.thresholdEventCallback = thresholdEventCallback;
     }
 
     public static class TemperatureThresholdBuilder {
 
         private final float temperatureThreshold;
+        private final Consumer<Float> thresholdEventCallback;
         private TemperatureScales temperatureScale = TemperatureScales.CELSIUS_SCALE;
-        private float thresholdPrecision = 0.0F;
-        private ThresholdTriggerDirections triggerDirection = null;
+        private float thresholdTriggerPrecision = 0.0F;
+        private ThresholdTriggerDirections thresholdTriggerDirection = null;
 
-        public TemperatureThresholdBuilder(float temperatureThreshold) {
+        public TemperatureThresholdBuilder(float temperatureThreshold, Consumer<Float> thresholdEventCallback) {
             this.temperatureThreshold = temperatureThreshold;
+            this.thresholdEventCallback = thresholdEventCallback;
         }
 
         public TemperatureThreshold build() {
             return new TemperatureThreshold(
                     this.temperatureThreshold,
                     this.temperatureScale,
-                    this.thresholdPrecision,
-                    this.triggerDirection);
+                    this.thresholdTriggerPrecision,
+                    this.thresholdTriggerDirection,
+                    this.thresholdEventCallback);
         }
 
         public TemperatureThresholdBuilder temperatureScale(TemperatureScales temperatureScale) {
@@ -37,26 +51,63 @@ public class TemperatureThreshold implements TemperatureThresholdEventListener {
             return this;
         }
 
-        public TemperatureThresholdBuilder thresholdPrecision(float thresholdPrecision) {
-            this.thresholdPrecision = thresholdPrecision;
+        public TemperatureThresholdBuilder thresholdTriggerPrecision(float thresholdTriggerPrecision) {
+            this.thresholdTriggerPrecision = thresholdTriggerPrecision;
             return this;
         }
 
-        public TemperatureThresholdBuilder triggerDirection(ThresholdTriggerDirections triggerDirection) {
-            this.triggerDirection = triggerDirection;
+        public TemperatureThresholdBuilder thresholdTriggerDirection(ThresholdTriggerDirections thresholdTriggerDirection) {
+            this.thresholdTriggerDirection = thresholdTriggerDirection;
             return this;
         }
     }
 
-    private final float temperatureThreshold;
-    private TemperatureScales temperatureScale;
-    private float thresholdPrecision;
-    private ThresholdTriggerDirections triggerDirection;
-
     @Override
     public void onTemperatureRead(float newTemperature, float previousTemperature, TemperatureScales temperatureScale) {
-        System.out.println(String.format("TemperatureThreshold - newTemperature read: %f", newTemperature));
-        System.out.println(String.format("TemperatureThreshold - previousTemperature read: %f", previousTemperature));
+        // TODO: Convert temps
+
+        System.out.println(String.format("onTemperatureRead - newTemp: %f     previousTemp: %f", newTemperature, previousTemperature));
+
+        if (shouldTriggerThresholdEvent(newTemperature, previousTemperature)) {
+            thresholdEventCallback.accept(newTemperature);
+        }
+    }
+
+    private boolean shouldTriggerThresholdEvent(float newTemperature, float previousTemperature) {
+        // Check to see if a temperature threshold has been reached along with
+        // any additional requirements that the consumer provided and if so
+        // trigger the event callback.
+        return isTempThresholdReached(temperatureThreshold, newTemperature, previousTemperature)
+                && isTempDifferencePrecise(newTemperature, previousTemperature)
+                && isTempMovementCorrectDirection(newTemperature, previousTemperature);
+    }
+
+    private boolean isTempThresholdReached(float temperatureThreshold, float newTemperature, float previousTemperature) {
+        // Temperature threshold can be reached in two cases:
+        // 1) Previous temperature is less than the threshold and new temperature
+        // is equal or greater than the threshold
+        // e.g. temperatureThreshold: 10, previousTemperature: 5, newTemperature: 15 (or 10)
+        //
+        // 2) Previous temperature is greater than the threshold and new temperature
+        // is equal or less than the threshold
+        // e.g. temperatureThreshold: 10, previousTemperature: 15, newTemperature: 5 (or 10)
+        return (previousTemperature < temperatureThreshold && newTemperature >= temperatureThreshold)
+                || (previousTemperature > temperatureThreshold && newTemperature <= temperatureThreshold);
+    }
+
+    private boolean isTempDifferencePrecise(float newTemperature, float previousTemperature) {
+        return Math.abs(newTemperature - previousTemperature) >= thresholdTriggerPrecision;
+    }
+
+    private boolean isTempMovementCorrectDirection(float newTemperature, float previousTemperature) {
+        // If no trigger direction was provided indicate that any movement is
+        // the correct direction
+        if (thresholdTriggerDirection == null) {
+            return true;
+        }
+
+        return (thresholdTriggerDirection == ThresholdTriggerDirections.DECREASING_TEMP && newTemperature < previousTemperature)
+                || (thresholdTriggerDirection == ThresholdTriggerDirections.INCREASING_TEMP && newTemperature > previousTemperature);
     }
 
 }

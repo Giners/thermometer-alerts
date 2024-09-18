@@ -1,6 +1,6 @@
 package org.thermometer;
 
 public enum ThresholdTriggerDirections {
-    DECREASING,
-    INCREASING
+    DECREASING_TEMP,
+    INCREASING_TEMP
 }

@@ -1,13 +1,17 @@
 package org.thermometer;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class Thermometer implements TemperatureDataEventListener {
 
     private TemperatureScales temperatureScale = TemperatureScales.CELSIUS_SCALE;
 
-    private Float currentTemp = null;
-    private Float previousTemp = null;
+    // private Float currentTemp = null;
+    // private Float previousTemp = null;
+    private final AtomicReference<Float> currentTempAtomic = new AtomicReference<>(null);
+    private final AtomicReference<Float> previousTempAtomic = new AtomicReference<>(null);
 
     private ArrayList<TemperatureThresholdEventListener> temperatureThresholds = new ArrayList<TemperatureThresholdEventListener>();
 
@@ -20,38 +24,48 @@ public class Thermometer implements TemperatureDataEventListener {
     }
 
     public void addTemperatureThreshold(TemperatureThresholdEventListener temperatureThreshold) {
-        this.temperatureThresholds.add(temperatureThreshold);
+        temperatureThresholds.add(temperatureThreshold);
     }
 
     @Override
-    public void onTemperatureData(float temperature) {
-        this.previousTemp = this.currentTemp;
-        this.currentTemp = temperature;
+    public void onTemperatureData(float currentTemp) {
+        Float previousTemp = this.previousTempAtomic.getAndSet(
+                this.currentTempAtomic.getAndSet(currentTemp));
 
+        // Float previousTemp = this.previousTemp.getAndSet(temperature)
+        // previousTemp = currentTemp;
+        // currentTemp = temperature;
         // Asynchronously event the temperate data we just read on all the thresholds
         // that are currently registered with us.
         //
         // The first time data is read there won't be a previous value so guard against
         // it being `null` and causing a NPE when converting from the primitive wrapper
-        if (this.previousTemp != null && !this.temperatureThresholds.isEmpty()) {
+        if (previousTemp != null
+                && Float.compare(previousTemp, currentTemp) != 0
+                && !temperatureThresholds.isEmpty()) {
             new Thread(() -> {
                 for (TemperatureThresholdEventListener temperatureThreshold : temperatureThresholds) {
-                    temperatureThreshold.onTemperatureRead(this.currentTemp, this.previousTemp, this.temperatureScale);
+                    temperatureThreshold.onTemperatureRead(currentTemp, previousTemp, temperatureScale);
                 }
-            }).start();
+            }).start();;
         }
     }
 
     public static void main(String[] args) {
         System.out.println("Is it hot or cold in here?");
 
-        TemperatureThreshold temperatureThreshold = new TemperatureThreshold.TemperatureThresholdBuilder(5.0F).build();
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            System.out.println(String.format("TemperatureThresholdEvent - newTemperature read: %f", newTemperature));
+        };
+
+        TemperatureThreshold temperatureThreshold = new TemperatureThreshold.TemperatureThresholdBuilder(5.0F, thresholdEventCallback).build();
         Thermometer thermometer = new Thermometer();
 
         thermometer.addTemperatureThreshold(temperatureThreshold);
 
-        thermometer.onTemperatureData(5.4F);
+        thermometer.onTemperatureData(4.4F);
         thermometer.onTemperatureData(6.7F);
+        thermometer.onTemperatureData(8.1F);
     }
 
 }
