@@ -1,5 +1,7 @@
 package org.thermometer;
 
+import java.util.function.Consumer;
+
 public class ProjectTests {
 
     public static void main(String[] args) {
@@ -18,12 +20,12 @@ public class ProjectTests {
         testDefaultThermometerConstructor();
         testSetters();
         testOnTemperatureDataSetsTemperatures();
+        testTemperatureThresholdBuilder();
+        testIsTempThresholdReached();
+        testIsTempDifferencePrecise();
+        testIsTempMovementCorrectDirection();
     }
 
-    /**
-     * Tests that the values are set properly on the Thermometer type instance
-     * when using the default constructor
-     */
     public static void testDefaultThermometerConstructor() {
         Thermometer thermometer = new Thermometer();
 
@@ -108,6 +110,164 @@ public class ProjectTests {
 
         assert Float.compare(thermometer.getCurrentTemperature(), expectedCurrentTemp) == 0 :
                 String.format("Current temp not properly set when reading a temperature of '%f'", temperatureData3);
+    }
+
+    public static void testTemperatureThresholdBuilder() {
+        // Verify that the default values are set with the required values when
+        // using the TemperatureThresholdBuilder type to get an instance of a
+        // TemperatureThreshold
+        float expectedTemperatureThreshold = 1.0F;
+
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            // Purposely left blank - will assert this functionality separtely when
+            // verifying thresholds
+        };
+
+        TemperatureThreshold temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(expectedTemperatureThreshold, thresholdEventCallback).build();
+
+        assert Float.compare(temperatureThreshold.getTemperatureThreshold(), expectedTemperatureThreshold) == 0 :
+                "TemperatureThresholdBuilder didn't properly set default value of the temperature threshold";
+
+        assert temperatureThreshold.getTemperatureScale() == TemperatureThreshold.DEFAULT_TEMPERATURE_SCALE :
+                "TemperatureThresholdBuilder didn't properly set default value of the temperature scale";
+
+        assert Float.compare(temperatureThreshold.getThresholdTriggerPrecision(), TemperatureThreshold.DEFAULT_THRESHOLD_TRIGGER_PRECISION) == 0 :
+                "TemperatureThresholdBuilder didn't properly set default value of the temperature threshold precision";
+
+        assert temperatureThreshold.getThresholdTriggerDirection() == TemperatureThreshold.DEFAULT_THRESHOLD_TRIGGER_DIRECTION :
+                "TemperatureThresholdBuilder didn't properly set default value of the temperature threshold trigger direction";
+
+        // Verify that setting alternative values using the setters on the 
+        // TemperatureThresholdBuilder type sets the proper values on the
+        // instance of the TemperatureThreshold
+        TemperatureScales expectedTemperatureScale
+                = TemperatureThreshold.DEFAULT_TEMPERATURE_SCALE == TemperatureScales.CELSIUS_SCALE
+                        ? TemperatureScales.FAHRENHEIT_SCALE : TemperatureScales.CELSIUS_SCALE;
+
+        float expectedThresholdTriggerPrecision = 5.0F;
+
+        ThresholdTriggerDirections expectedThresholdTriggerDirection = ThresholdTriggerDirections.DECREASING_TEMP;
+
+        temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(expectedTemperatureThreshold, thresholdEventCallback)
+                        .temperatureScale(expectedTemperatureScale)
+                        .thresholdTriggerPrecision(expectedThresholdTriggerPrecision)
+                        .thresholdTriggerDirection(expectedThresholdTriggerDirection)
+                        .build();
+
+        assert temperatureThreshold.getTemperatureScale() == expectedTemperatureScale :
+                "TemperatureThresholdBuilder didn't properly set the temperature scale";
+
+        assert Float.compare(temperatureThreshold.getThresholdTriggerPrecision(), expectedThresholdTriggerPrecision) == 0 :
+                "TemperatureThresholdBuilder didn't properly set the temperature threshold precision";
+
+        assert temperatureThreshold.getThresholdTriggerDirection() == expectedThresholdTriggerDirection :
+                "TemperatureThresholdBuilder didn't properly set the temperature threshold trigger direction";
+    }
+
+    public static void testIsTempThresholdReached() {
+        float testTemperatureThreshold = 1.0F;
+
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            // Purposely left blank - will assert this functionality separtely when
+            // verifying thresholds
+        };
+
+        TemperatureThreshold temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(testTemperatureThreshold, thresholdEventCallback).build();
+
+        // Verify that an increasing temperature crossing the threshold is identified
+        float previousTemp = testTemperatureThreshold - 1.0F;
+        float newTemp = testTemperatureThreshold + 1.0F;
+
+        assert temperatureThreshold.isTempThresholdReached(newTemp, previousTemp) == true :
+                String.format("Failed to identify an increasing temperature crossing the threshold");
+
+        // Verify that an increasing temperature landing on the threshold is identified
+        previousTemp = testTemperatureThreshold - 1.0F;
+        newTemp = testTemperatureThreshold;
+
+        assert temperatureThreshold.isTempThresholdReached(newTemp, previousTemp) == true :
+                String.format("Failed to identify an increasing temperature landing on the threshold");
+
+        // Verify that a decresing temperature crossing the threshold is identified
+        previousTemp = testTemperatureThreshold + 1.0F;
+        newTemp = testTemperatureThreshold - 1.0F;
+
+        assert temperatureThreshold.isTempThresholdReached(newTemp, previousTemp) == true :
+                String.format("Failed to identify a decreasing temperature crossing the threshold");
+
+        // Verify that a decresing temperature landing on the threshold is identified
+        previousTemp = testTemperatureThreshold + 1.0F;
+        newTemp = testTemperatureThreshold;
+
+        assert temperatureThreshold.isTempThresholdReached(newTemp, previousTemp) == true :
+                String.format("Failed to identify a decreasing temperature landing on the threshold");
+    }
+
+    public static void testIsTempDifferencePrecise() {
+        float testTemperatureThreshold = 1.0F;
+        float testThresholdTriggerPrecision = 5.0F;
+
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            // Purposely left blank - will assert this functionality separtely when
+            // verifying thresholds
+        };
+
+        TemperatureThreshold temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(testTemperatureThreshold, thresholdEventCallback)
+                        .thresholdTriggerPrecision(testThresholdTriggerPrecision)
+                        .build();
+
+        // Verify that a movement isn't precise enough
+        float previousTemp = testTemperatureThreshold;
+        float newTemp = testTemperatureThreshold + (testThresholdTriggerPrecision - 1.0F);
+
+        assert temperatureThreshold.isTempDifferencePrecise(newTemp, previousTemp) == false :
+                String.format("Failed to identify a movement that isn't precise enough");
+
+        // Verify that a movement is precise enough
+        previousTemp = testTemperatureThreshold;
+        newTemp = testTemperatureThreshold + (testThresholdTriggerPrecision + 1.0F);
+
+        assert temperatureThreshold.isTempDifferencePrecise(newTemp, previousTemp) == true :
+                String.format("Failed to identify a movement that is precise enough");
+    }
+
+    public static void testIsTempMovementCorrectDirection() {
+        float testTemperatureThreshold = 1.0F;
+        ThresholdTriggerDirections testThresholdTriggerDirection = ThresholdTriggerDirections.INCREASING_TEMP;
+
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            // Purposely left blank - will assert this functionality separtely when
+            // verifying thresholds
+        };
+
+        TemperatureThreshold temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(testTemperatureThreshold, thresholdEventCallback)
+                        .thresholdTriggerDirection(testThresholdTriggerDirection)
+                        .build();
+
+        // Verify an increasing movement
+        float previousTemp = testTemperatureThreshold;
+        float newTemp = testTemperatureThreshold + 1.0F;
+
+        assert temperatureThreshold.isTempMovementCorrectDirection(newTemp, previousTemp) == true :
+                String.format("Failed to identify an increasing temp movement");
+
+        // Verify a increasing movement
+        testThresholdTriggerDirection = ThresholdTriggerDirections.DECREASING_TEMP;
+        temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(testTemperatureThreshold, thresholdEventCallback)
+                        .thresholdTriggerDirection(testThresholdTriggerDirection)
+                        .build();
+
+        previousTemp = testTemperatureThreshold;
+        newTemp = testTemperatureThreshold - 1.0F;
+
+        assert temperatureThreshold.isTempMovementCorrectDirection(newTemp, previousTemp) == true :
+                String.format("Failed to identify an decreasing temp movement");
     }
 
 }
