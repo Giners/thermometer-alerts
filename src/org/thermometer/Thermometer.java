@@ -17,8 +17,6 @@ public class Thermometer implements TemperatureDataEventListener {
      * scale as Celsius.
      */
     public Thermometer() {
-        // TODO: Need to add getters/setters
-        // TODO: Need to do temperature conversion
         this.temperatureScale = TemperatureScales.CELSIUS_SCALE;
     }
 
@@ -27,11 +25,6 @@ public class Thermometer implements TemperatureDataEventListener {
         Float previousTemp = currentTempAtomic.getAndSet(currentTemp);
         previousTempAtomic.getAndSet(previousTemp);
 
-        System.out.println(String.format("onTemperatureData - currentTemp: %f    -    previousTemp: %f", currentTemp, previousTemp));
-
-        // Float previousTemp = this.previousTemp.getAndSet(temperature)
-        // previousTemp = currentTemp;
-        // currentTemp = temperature;
         // Asynchronously event the temperate data we just read on all the thresholds
         // that are currently registered with us.
         //
@@ -40,9 +33,6 @@ public class Thermometer implements TemperatureDataEventListener {
         if (previousTemp != null
                 && Float.compare(previousTemp, currentTemp) != 0
                 && !temperatureThresholds.isEmpty()) {
-
-            System.out.println(String.format(
-                    "onTemperatureData conditional is true - previousTemp: %f   currentTemp: %f", previousTemp, currentTemp));
 
             new Thread(() -> {
                 for (TemperatureThresholdEventListener temperatureThreshold : temperatureThresholds) {

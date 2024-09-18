@@ -1,22 +1,11 @@
 package org.thermometer;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class ProjectTests {
 
     public static void main(String[] args) {
-        // System.out.println("Is it hot or cold in here?");
-
-        // Consumer<Float> thresholdEventCallback = newTemperature -> {
-        //     System.out.println(String.format("TemperatureThresholdEvent - newTemperature read: %f", newTemperature));
-        // };
-        // TemperatureThreshold temperatureThreshold = new TemperatureThreshold.TemperatureThresholdBuilder(5.0F, thresholdEventCallback).build();
-        // Thermometer thermometer = new Thermometer();
-        // thermometer.addTemperatureThreshold(temperatureThreshold);
-        // thermometer.onTemperatureData(4.4F);
-        // thermometer.onTemperatureData(6.7F);
-        // thermometer.onTemperatureData(8.1F);
-        // thermometer.onTemperatureData(2.9F);
         testDefaultThermometerConstructor();
         testSetters();
         testOnTemperatureDataSetsTemperatures();
@@ -24,6 +13,7 @@ public class ProjectTests {
         testIsTempThresholdReached();
         testIsTempDifferencePrecise();
         testIsTempMovementCorrectDirection();
+        testThresholdIsTriggered();
     }
 
     public static void testDefaultThermometerConstructor() {
@@ -268,6 +258,39 @@ public class ProjectTests {
 
         assert temperatureThreshold.isTempMovementCorrectDirection(newTemp, previousTemp) == true :
                 String.format("Failed to identify an decreasing temp movement");
+    }
+
+    public static void testThresholdIsTriggered() {
+        float expectedTemperatureThreshold = 1.0F;
+
+        AtomicBoolean thresholdHasBeenTriggered = new AtomicBoolean(false);
+
+        Consumer<Float> thresholdEventCallback = newTemperature -> {
+            // Purposely left blank - will assert this functionality separtely when
+            // verifying thresholds
+            thresholdHasBeenTriggered.getAndSet(true);
+            System.out.println("Test threshold event triggered");
+        };
+
+        TemperatureThreshold temperatureThreshold
+                = new TemperatureThreshold.TemperatureThresholdBuilder(expectedTemperatureThreshold, thresholdEventCallback).build();
+
+        Thermometer thermometer = new Thermometer();
+        thermometer.addTemperatureThreshold(temperatureThreshold);
+
+        // Provide several increasing pieces of tempeature data to verify that
+        // we cross a threshold
+        float temperatureData = expectedTemperatureThreshold - 3.0F;
+
+        for (int temperatureDataCount = 0; temperatureDataCount < 10; temperatureDataCount++) {
+            thermometer.onTemperatureData(temperatureData);
+
+            temperatureData += 1.0F;
+        }
+
+        // At this point the atomic of wheter we have triggered our threshold
+        // should be set
+        assert thresholdHasBeenTriggered.get() == true : "Failed to trigger threshold on thermometer";
     }
 
 }
