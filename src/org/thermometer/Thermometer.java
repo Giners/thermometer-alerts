@@ -12,10 +12,6 @@ public class Thermometer implements TemperatureDataEventListener {
 
     private final ArrayList<TemperatureThresholdEventListener> temperatureThresholds = new ArrayList<>();
 
-    /**
-     * Default constructor that creates a thermometer and sets the temperature
-     * scale as Celsius.
-     */
     public Thermometer() {
         this.temperatureScale = TemperatureScales.CELSIUS_SCALE;
     }
